@@ -1,4 +1,8 @@
 package main
+/*
+Make maxMask in ignoreSubnet a passed variabel
+
+*/
 
 import (
 	"fmt"
@@ -9,25 +13,15 @@ func pingDriver() error{
 	fmt.Println("Welcome to pingDriver")
 	
 	//Get list of ipv4 addresses
-	addressList, err := getInterface()
-	if err != nil {
-		return fmt.Errorf("Could not get interfaces. %s", err)
-	}
+	//addressList, err := getInterface()
+	//if err != nil {
+	//	return fmt.Errorf("Could not get interfaces. %s", err)
+	//}
 
-	fmt.Println(addressList)
+	//fmt.Println(addressList)
 
-	/*
-	//Get the current address
-	host, _ := os.Hostname()
-	fmt.Println(net.LookupIP(host))
-	fmt.Println(host)
-	//myip := net.ParseIP("216.252.192.167")
-	
-	fmt.Println(net.IPv4allrouter.DefaultMask())
-
-	fmt.Println(net.InterfaceAddrs())
-	*/
-
+	//Generate list of address to ping
+	generateAddresses()
 	return nil
 }
 
@@ -61,7 +55,7 @@ func getInterface() ([]net.Addr, error) {
 			//If IPv4 add to addressList
 			if ipAddr.IP.To4() != nil {
 				//Ignore networks in unwanted subnets
-				if ! inSubnet(ignoreSubnets, ipAddr) {
+				if ! ignoreSubnet(ignoreSubnets, ipAddr) {
 					addressList = append(addressList, addr)
 				}			
 			}
@@ -72,13 +66,47 @@ func getInterface() ([]net.Addr, error) {
 	return addressList, nil
 }
 
-func inSubnet(ignoreSubnets []*net.IPNet, ipAddr *net.IPNet) bool {
+func ignoreSubnet(ignoreSubnets []*net.IPNet, ipAddr *net.IPNet) bool {
+	//Set a max mask size. Default is /20, We dont want to wait all day to ping 2048 unnesicary addresses.
+	maxMask := 21
+
 	//Iterate through each subnet
 	for _, subnet := range ignoreSubnets {
+		//Check if subnet is in the existing subnet
 		if subnet.Contains(ipAddr.IP) {
+			return true
+		}
+
+		//Check if subnet is larger than max mask. Return true if it is
+		mask, _ := ipAddr.Mask.Size()
+		if mask < maxMask {
 			return true
 		}
 	}
 
 	return false
+}
+
+func generateAddresses() {
+	// Define your subnet in CIDR notation
+	subnet := "192.168.1.0/24"
+
+	// Parse the CIDR notation to get the IP address and the subnet mask
+	ip, ipnet, err := net.ParseCIDR(subnet)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	//networkAddr := ip.Mask(ipnet.Mask)
+
+	for ipnet.Contains(ip) {
+		fmt.Println(ip)
+		for j := len(ip) - 1; j >= 0; j-- {
+			ip[j]++
+			if ip[j] > 0 {
+				break
+			}
+		}
+	}
 }
