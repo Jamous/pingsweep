@@ -3,7 +3,11 @@ package main
 import "log"
 
 func main() {
-	err := pingDriver()
+	//Setup new PSconfig
+	psconfig := newPSconfig()
+
+	//Call pingDriver
+	err := pingDriver(psconfig)
 	if err != nil {
 		log.Fatalf("%s\n", err)
 	}
