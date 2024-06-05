@@ -1,4 +1,4 @@
-module pingsweep
+module github.com/Jamous/pingsweep
 
 go 1.22.0
 
