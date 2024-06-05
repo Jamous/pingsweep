@@ -1,50 +1,49 @@
-package main
-/*
-Make maxMask in ignoreSubnet a passed variabel
-
-*/
+package pingsweep
 
 import (
 	"fmt"
 	"net"
+	"golang.org/x/net/icmp"
+    "golang.org/x/net/ipv4"
+	"os"
 )
 
 //Handle package config.
 type PSconfig struct {
-	ListAddresses     bool //Prompt users manually to use or ignore a network
 	UseDefaultNetwork bool //Only use the default network, ignore all others
 	MaxSubnetSize     int  //Maxinimum subnet size. Default is 21, anything longer will be ignored as a valid interface.
 }
 
 //Generates a default PSconfig.
-func newPSconfig() PSconfig {
-	config := PSconfig{ListAddresses: false, UseDefaultNetwork: true, MaxSubnetSize: 20}
-	
+func NewPSconfig() PSconfig {
+	config := PSconfig{UseDefaultNetwork: true, MaxSubnetSize: 21}
+
 	return config
 }
 
 //Driver
-func pingDriver(psconfig PSconfig) error{
-
+func PingDriver(psconfig PSconfig) ([]net.Addr, error) {
 	fmt.Println("Welcome to pingDriver")
 	
 	//Get list of ipv4 addresses
 	subnetList, err := getInterface(psconfig)
 	if err != nil {
-		return fmt.Errorf("Could not get interfaces. %s", err)
+		var bad []net.Addr
+		return bad, err
 	}
 
 	//Generate list of address to ping
 	allAddresses := generateAddresses(subnetList)
 
-	fmt.Println(allAddresses, len(allAddresses))
-	_=allAddresses
+	//Ping all addresses
+	for _, address := range allAddresses {
+		pingAddr(address)
+	}
 
-	return nil
+	return subnetList, nil
 }
 
-
-
+//Get a list of all interface addresses
 func getInterface(psconfig PSconfig) ([]net.Addr, error) {
 	//Slice of interfaces
 	var interfaces []net.Addr
@@ -112,6 +111,7 @@ func getInterface(psconfig PSconfig) ([]net.Addr, error) {
 	return subnetList, nil
 }
 
+//Find the gateway of an interface
 func getGateway() (int, error) {
     //Get the list of network interfaces
     interfaces, err := net.Interfaces()
@@ -150,6 +150,7 @@ func getGateway() (int, error) {
 	return 0, nil
 }
 
+//Determin if a subnet should be ignored
 func ignoreSubnet(ignoreSubnets []*net.IPNet, ipAddr *net.IPNet, maxSubnetSize int) bool {
 	//Iterate through each subnet
 	for _, subnet := range ignoreSubnets {
@@ -168,6 +169,7 @@ func ignoreSubnet(ignoreSubnets []*net.IPNet, ipAddr *net.IPNet, maxSubnetSize i
 	return false
 }
 
+//Generate all addresses for a given subnet
 func generateAddresses(subnetList []net.Addr) []net.IP {
 	var allAddresses []net.IP
 
@@ -184,8 +186,10 @@ func generateAddresses(subnetList []net.Addr) []net.IP {
 
 		//Find all addresses
 		for ipnet.Contains(ip) {
-			//Add to allAddresses
-			allAddresses = append(allAddresses, ip)
+			//Add to allAddresses. Create a new copy of the IP address. net.IP values are slices, so this is [][] for an address
+			ipCopy := make(net.IP, len(ip))
+			copy(ipCopy, ip)
+			allAddresses = append(allAddresses, ipCopy)
 
 			//Increment ip
 			for j := len(ip) - 1; j >= 0; j-- {
@@ -198,4 +202,36 @@ func generateAddresses(subnetList []net.Addr) []net.IP {
 	}
 
 	return allAddresses
+}
+
+//Ping an individual address, only send 1 ICMP echo request. Result is ignored.
+func pingAddr(address net.IP) {
+	//This code comes from this great article. It had a few bugs that I had to work out. https://dev.to/hideckies/create-ping-in-go-3hco
+	// Setup listener
+    packetconn, err := icmp.ListenPacket("ip4:icmp", "0.0.0.0")
+    if err != nil {
+		fmt.Printf("pingAddr could not setup listen for address %s: %s\n", address, err)
+    }
+    defer packetconn.Close()
+
+    // Create icmp message
+    msg := &icmp.Message{
+        Type: ipv4.ICMPTypeEcho,
+        Code: 0,
+        Body: &icmp.Echo{
+            ID:   os.Getpid() & 0xffff,
+            Seq:  1,
+            Data: []byte("hello"),
+        },
+    }
+
+	//Encode and send icmp message. Do not wait for response
+    wb, err := msg.Marshal(nil)
+    if err != nil {
+		fmt.Printf("pingAddr could not encode the ICMP message for address %s: %s\n", address, err)
+    }
+
+    if _, err := packetconn.WriteTo(wb, &net.IPAddr{IP: address}); err != nil {
+        fmt.Printf("pingAddr could not WriteTo connection for address %s: %s\n", address, err)
+    }	
 }
