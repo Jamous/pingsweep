@@ -11,13 +11,14 @@ import (
 
 // Handle package config.
 type PSconfig struct {
-	UseDefaultNetwork bool //Only use the default network, ignore all others
-	MaxSubnetSize     int  //Maxinimum subnet size. Default is 21, anything longer will be ignored as a valid interface.
+	UseDefaultNetwork bool   //Only use the default network, ignore all others
+	MaxSubnetSize     int    //Maxinimum subnet size. Default is 21, anything longer will be ignored as a valid interface.
+	CustomSubnet      string //Custom subnet to ping.
 }
 
 // Generates a default PSconfig.
 func NewPSconfig() PSconfig {
-	config := PSconfig{UseDefaultNetwork: true, MaxSubnetSize: 21}
+	config := PSconfig{UseDefaultNetwork: true, MaxSubnetSize: 21, CustomSubnet: ""}
 
 	return config
 }
@@ -25,21 +26,27 @@ func NewPSconfig() PSconfig {
 // Driver
 func PingDriver(psconfig PSconfig) ([]net.Addr, error) {
 	fmt.Println("Welcome to pingDriver")
+	//Check if custom subnet was passed, if not get interfaces.
+	var subnetList []net.Addr
+	var err error
+	if psconfig.CustomSubnet != "" {
 
-	//Get list of ipv4 addresses
-	subnetList, err := getInterface(psconfig)
-	if err != nil {
-		var bad []net.Addr
-		return bad, err
+	} else {
+		//Get list of ipv4 addresses
+		subnetList, err = getInterface(psconfig)
+		if err != nil {
+			var bad []net.Addr
+			return bad, err
+		}
 	}
 
 	//Generate list of address to ping
-	allAddresses := generateAddresses(subnetList)
+	//allAddresses := generateAddresses(subnetList)
 
 	//Ping all addresses
-	for _, address := range allAddresses {
-		pingAddr(address)
-	}
+	//for _, address := range allAddresses {
+	//	pingAddr(address)
+	//}
 
 	return subnetList, nil
 }
