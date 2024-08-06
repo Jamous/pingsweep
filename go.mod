@@ -1,7 +1,7 @@
 module github.com/Jamous/pingsweep
 
-go 1.22.0
+go 1.22.5
 
-require golang.org/x/net v0.25.0
+require golang.org/x/net v0.27.0
 
-require golang.org/x/sys v0.20.0 // indirect
+require golang.org/x/sys v0.22.0 // indirect
