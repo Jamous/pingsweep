@@ -25,11 +25,15 @@ func NewPSconfig() PSconfig {
 
 // Driver
 func PingDriver(psconfig PSconfig) ([]net.Addr, error) {
-	fmt.Println("Welcome to pingDriver")
 	//Check if custom subnet was passed, if not get interfaces.
 	var subnetList []net.Addr
 	var err error
 	if psconfig.CustomSubnet != "" {
+		subnetList, err = convertSubnetInput(psconfig)
+		if err != nil {
+			var bad []net.Addr
+			return bad, err
+		}
 
 	} else {
 		//Get list of ipv4 addresses
@@ -39,15 +43,27 @@ func PingDriver(psconfig PSconfig) ([]net.Addr, error) {
 			return bad, err
 		}
 	}
-	fmt.Println("my updates")
 
 	//Generate list of address to ping
-	//allAddresses := generateAddresses(subnetList)
+	allAddresses := generateAddresses(subnetList)
 
 	//Ping all addresses
-	//for _, address := range allAddresses {
-	//	pingAddr(address)
-	//}
+	for _, address := range allAddresses {
+		pingAddr(address)
+	}
+
+	return subnetList, nil
+}
+
+func convertSubnetInput(psconfig PSconfig) ([]net.Addr, error) {
+	// Convert psconfi.CustomSubnet to net.addr
+	var subnetList []net.Addr
+	_, network, err := net.ParseCIDR(psconfig.CustomSubnet)
+	if err != nil {
+		return nil, fmt.Errorf("convertSubnetInput could not convert Custom subnet %s into net.Addr: %s", psconfig.CustomSubnet, err)
+
+	}
+	subnetList = append(subnetList, network)
 
 	return subnetList, nil
 }
