@@ -39,6 +39,7 @@ func PingDriver(psconfig PSconfig) ([]net.Addr, error) {
 			return bad, err
 		}
 	}
+	fmt.Println("my updates")
 
 	//Generate list of address to ping
 	//allAddresses := generateAddresses(subnetList)
