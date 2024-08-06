@@ -3,28 +3,29 @@ package pingsweep
 import (
 	"fmt"
 	"net"
-	"golang.org/x/net/icmp"
-    "golang.org/x/net/ipv4"
 	"os"
+
+	"golang.org/x/net/icmp"
+	"golang.org/x/net/ipv4"
 )
 
-//Handle package config.
+// Handle package config.
 type PSconfig struct {
 	UseDefaultNetwork bool //Only use the default network, ignore all others
 	MaxSubnetSize     int  //Maxinimum subnet size. Default is 21, anything longer will be ignored as a valid interface.
 }
 
-//Generates a default PSconfig.
+// Generates a default PSconfig.
 func NewPSconfig() PSconfig {
 	config := PSconfig{UseDefaultNetwork: true, MaxSubnetSize: 21}
 
 	return config
 }
 
-//Driver
+// Driver
 func PingDriver(psconfig PSconfig) ([]net.Addr, error) {
 	fmt.Println("Welcome to pingDriver")
-	
+
 	//Get list of ipv4 addresses
 	subnetList, err := getInterface(psconfig)
 	if err != nil {
@@ -43,7 +44,7 @@ func PingDriver(psconfig PSconfig) ([]net.Addr, error) {
 	return subnetList, nil
 }
 
-//Get a list of all interface addresses
+// Get a list of all interface addresses
 func getInterface(psconfig PSconfig) ([]net.Addr, error) {
 	//Slice of interfaces
 	var interfaces []net.Addr
@@ -76,7 +77,7 @@ func getInterface(psconfig PSconfig) ([]net.Addr, error) {
 			return nil, fmt.Errorf("Could not get interfaces. %s", err)
 		}
 	}
-		
+
 	//setup addressList and ignoreSubnets
 	subnetList := []net.Addr{}
 	ignoreSubnets := []*net.IPNet{}
@@ -100,9 +101,9 @@ func getInterface(psconfig PSconfig) ([]net.Addr, error) {
 			//If IPv4 add to subnetList
 			if ipAddr.IP.To4() != nil {
 				//Ignore networks in unwanted subnets
-				if ! ignoreSubnet(ignoreSubnets, ipAddr, psconfig.MaxSubnetSize) {
+				if !ignoreSubnet(ignoreSubnets, ipAddr, psconfig.MaxSubnetSize) {
 					subnetList = append(subnetList, addr)
-				}			
+				}
 			}
 		}
 	}
@@ -111,46 +112,46 @@ func getInterface(psconfig PSconfig) ([]net.Addr, error) {
 	return subnetList, nil
 }
 
-//Find the gateway of an interface
+// Find the gateway of an interface
 func getGateway() (int, error) {
-    //Get the list of network interfaces
-    interfaces, err := net.Interfaces()
-    if err != nil {
-        return 0, fmt.Errorf("getGateway could not get Interfaces: %s\n", err)
-    }
+	//Get the list of network interfaces
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return 0, fmt.Errorf("getGateway could not get Interfaces: %s\n", err)
+	}
 
-    //Find the default route (gateway) among the interfaces
-    for _, iface := range interfaces {
-        addrs, err := iface.Addrs()
-        if err != nil {
-            fmt.Printf("getGateway could not cvonert iface %s: %s\n", iface, err)
-            continue
-        }
+	//Find the default route (gateway) among the interfaces
+	for _, iface := range interfaces {
+		addrs, err := iface.Addrs()
+		if err != nil {
+			fmt.Printf("getGateway could not cvonert iface %s: %s\n", iface, err)
+			continue
+		}
 
-        for _, addr := range addrs {
-            ipnet, ok := addr.(*net.IPNet)
-            if !ok {
+		for _, addr := range addrs {
+			ipnet, ok := addr.(*net.IPNet)
+			if !ok {
 				fmt.Printf("getGateway could not cvonert addr %s: %s\n", iface, err)
-                continue
-            }
+				continue
+			}
 
 			//Look only at unicast interfaces
-            if ipnet.IP.IsGlobalUnicast() && !ipnet.IP.IsLoopback() && !ipnet.IP.IsLinkLocalUnicast() {
+			if ipnet.IP.IsGlobalUnicast() && !ipnet.IP.IsLoopback() && !ipnet.IP.IsLinkLocalUnicast() {
 				//Only accept if IPv4
 				if ipnet.IP.To4() != nil {
 					//fmt.Printf("Default Route (Gateway) for %s: %s, %d\n", iface.Name, ipnet.IP.String(), iface.Index)
 					return iface.Index, nil
 				}
-				
-            }
-        }
-    }
+
+			}
+		}
+	}
 
 	//If it got this found no route was found, ignore
 	return 0, nil
 }
 
-//Determin if a subnet should be ignored
+// Determin if a subnet should be ignored
 func ignoreSubnet(ignoreSubnets []*net.IPNet, ipAddr *net.IPNet, maxSubnetSize int) bool {
 	//Iterate through each subnet
 	for _, subnet := range ignoreSubnets {
@@ -169,7 +170,7 @@ func ignoreSubnet(ignoreSubnets []*net.IPNet, ipAddr *net.IPNet, maxSubnetSize i
 	return false
 }
 
-//Generate all addresses for a given subnet
+// Generate all addresses for a given subnet
 func generateAddresses(subnetList []net.Addr) []net.IP {
 	var allAddresses []net.IP
 
@@ -177,7 +178,7 @@ func generateAddresses(subnetList []net.Addr) []net.IP {
 	for _, subnet := range subnetList {
 		//skip over this if not ok
 		ipnet, ok := subnet.(*net.IPNet)
-		if ! ok {
+		if !ok {
 			continue
 		}
 
@@ -204,34 +205,34 @@ func generateAddresses(subnetList []net.Addr) []net.IP {
 	return allAddresses
 }
 
-//Ping an individual address, only send 1 ICMP echo request. Result is ignored.
+// Ping an individual address, only send 1 ICMP echo request. Result is ignored.
 func pingAddr(address net.IP) {
 	//This code comes from this great article. It had a few bugs that I had to work out. https://dev.to/hideckies/create-ping-in-go-3hco
 	// Setup listener
-    packetconn, err := icmp.ListenPacket("ip4:icmp", "0.0.0.0")
-    if err != nil {
+	packetconn, err := icmp.ListenPacket("ip4:icmp", "0.0.0.0")
+	if err != nil {
 		fmt.Printf("pingAddr could not setup listen for address %s: %s\n", address, err)
-    }
-    defer packetconn.Close()
+	}
+	defer packetconn.Close()
 
-    // Create icmp message
-    msg := &icmp.Message{
-        Type: ipv4.ICMPTypeEcho,
-        Code: 0,
-        Body: &icmp.Echo{
-            ID:   os.Getpid() & 0xffff,
-            Seq:  1,
-            Data: []byte("hello"),
-        },
-    }
+	// Create icmp message
+	msg := &icmp.Message{
+		Type: ipv4.ICMPTypeEcho,
+		Code: 0,
+		Body: &icmp.Echo{
+			ID:   os.Getpid() & 0xffff,
+			Seq:  1,
+			Data: []byte("hello"),
+		},
+	}
 
 	//Encode and send icmp message. Do not wait for response
-    wb, err := msg.Marshal(nil)
-    if err != nil {
+	wb, err := msg.Marshal(nil)
+	if err != nil {
 		fmt.Printf("pingAddr could not encode the ICMP message for address %s: %s\n", address, err)
-    }
+	}
 
-    if _, err := packetconn.WriteTo(wb, &net.IPAddr{IP: address}); err != nil {
-        fmt.Printf("pingAddr could not WriteTo connection for address %s: %s\n", address, err)
-    }	
+	if _, err := packetconn.WriteTo(wb, &net.IPAddr{IP: address}); err != nil {
+		fmt.Printf("pingAddr could not WriteTo connection for address %s: %s\n", address, err)
+	}
 }
