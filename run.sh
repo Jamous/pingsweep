@@ -1,2 +1,0 @@
-go build .
-sudo ./sweep
