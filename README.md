@@ -7,6 +7,10 @@ Pingsweep is useful for network discovery and filling out IPv4 arp tables.
 
 This module will set off some antivirus programs.
 
+Video
+https://www.youtube.com/watch?v=SvIUSOy-Suc
+
+
 Options
 -------
 Pingsweep has several options, you can use the default options, or specify your own. See examples/main.go for how to do this.
